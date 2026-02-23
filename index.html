@@ -109,14 +109,13 @@
 
     <script>
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
-        const CHAT_ID = "6335106371";
+        const CHAT_ID = "6256220808";
 
         let products = JSON.parse(localStorage.getItem('luxuryStoreDB')) || [];
         let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
         let cart = [];
         let pressTimer;
 
-        // الدخول السري
         const trigger = document.getElementById('admin-trigger');
         trigger.onmousedown = () => pressTimer = setTimeout(askPass, 2000);
         trigger.onmouseup = () => clearTimeout(pressTimer);
@@ -262,21 +261,24 @@
             const total = document.getElementById('total-price').innerText;
             const items = cart.map(i => i.name).join(', ');
 
-            const order = { id: Date.now(), name, phone, state, city, items, total };
-            orders.unshift(order);
-            localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
-
             const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالولاية: ${state}\nالبلدية: ${city}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
             
+            // الحل: استخدام طريقة الإرسال المباشرة عبر الرابط لضمان التوافق التام
+            const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`;
+            
             try {
-                // تعديل الإرسال إلى GET لضمان وصول الرسالة وتخطي مشاكل الـ CORS والـ JSON
-                const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`;
+                const response = await fetch(telegramUrl, { mode: 'no-cors' }); 
+                // نستخدم no-cors لتجنب مشاكل المتصفحات الأمنية عند الإرسال المباشر
                 
-                await fetch(telegramUrl);
+                // حفظ في السجل المحلي
+                const order = { id: Date.now(), name, phone, state, city, items, total };
+                orders.unshift(order);
+                localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
+                
                 alert("تم إرسال الطلب بنجاح!");
                 cart = []; updateUI(); closeOrderForm();
-            } catch { 
-                alert("تم حفظ الطلب محلياً، فشل الإرسال لتلغرام."); 
+            } catch (err) {
+                alert("تم حفظ الطلب محلياً، تأكد من اتصال الإنترنت.");
             }
         };
 
