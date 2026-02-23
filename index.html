@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luxury Store | إدارة المنتجات</title>
+    <title>adem Store </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -269,10 +269,10 @@
             const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالولاية: ${state}\nالبلدية: ${city}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
             
             try {
-                await fetch(`https://api.telegram.org/bot${8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q}/sendMessage`, {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: 6335106371, text: msg })
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: msg })
                 });
                 alert("تم إرسال الطلب بنجاح!");
                 cart = []; updateUI(); closeOrderForm();
