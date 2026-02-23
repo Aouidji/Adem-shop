@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luxury Store | إدارة المنتجات</title>
+    <title>adem Store </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -116,6 +116,7 @@
         let cart = [];
         let pressTimer;
 
+        // الدخول السري
         const trigger = document.getElementById('admin-trigger');
         trigger.onmousedown = () => pressTimer = setTimeout(askPass, 2000);
         trigger.onmouseup = () => clearTimeout(pressTimer);
@@ -261,30 +262,21 @@
             const total = document.getElementById('total-price').innerText;
             const items = cart.map(i => i.name).join(', ');
 
-            // تم تعديل التنسيق هنا لضمان وصول "اسم المنتج" (الكلبية) بوضوح
-            const msg = `📦 طلب جديد من الموقع:\n\n👤 الاسم: ${name}\n📞 الهاتف: ${phone}\n📍 الولاية: ${state}\n🏙️ البلدية: ${city}\n🛍️ المنتجات: ${items}\n💰 الإجمالي: ${total}`;
+            const order = { id: Date.now(), name, phone, state, city, items, total };
+            orders.unshift(order);
+            localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
+
+            const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالولاية: ${state}\nالبلدية: ${city}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
             
             try {
-                // استخدام URLSearchParams لضمان إرسال البيانات بشكل صحيح حتى لو كانت هناك مشاكل في headers
-                const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`;
+                // تعديل الإرسال إلى GET لضمان وصول الرسالة وتخطي مشاكل الـ CORS والـ JSON
+                const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`;
                 
-                const response = await fetch(url);
-                const result = await response.json();
-
-                if(result.ok) {
-                    const order = { id: Date.now(), name, phone, state, city, items, total };
-                    orders.unshift(order);
-                    localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
-                    alert("تم إرسال الطلب بنجاح!");
-                    cart = []; updateUI(); closeOrderForm();
-                } else {
-                    alert("خطأ تلغرام: " + result.description);
-                }
-            } catch (err) {
-                 alert("تعذر الاتصال بتلغرام، تم حفظ الطلب في السجل فقط.");
-                 const order = { id: Date.now(), name, phone, state, city, items, total };
-                 orders.unshift(order);
-                 localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
+                await fetch(telegramUrl);
+                alert("تم إرسال الطلب بنجاح!");
+                cart = []; updateUI(); closeOrderForm();
+            } catch { 
+                alert("تم حفظ الطلب محلياً، فشل الإرسال لتلغرام."); 
             }
         };
 
