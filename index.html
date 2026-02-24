@@ -63,8 +63,6 @@
         </div>
     </div>
 
-    <div id="print-area" class="hidden"></div>
-
     <div id="cart-sidebar" class="fixed inset-0 z-[60] hidden">
         <div class="absolute inset-0 bg-black/80 backdrop-blur-md" onclick="toggleCart()"></div>
         <div class="absolute left-0 top-0 h-full w-full max-w-sm bg-[#1a1226] p-8 text-white">
@@ -92,8 +90,8 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-        import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyBTaexoMpJM7FIeOg7A5TVyCV2g6dfj60o",
@@ -109,11 +107,11 @@
         const db = getDatabase(app);
 
         let products = [];
-        let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
         let cart = [];
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
-        const CHAT_ID = "6335106371"; // تم تحديث الأيدي هنا
+        const CHAT_ID = "6335106371";
 
+        // مزامنة المنتجات
         onValue(ref(db, 'products'), (snapshot) => {
             const data = snapshot.val();
             products = data ? Object.entries(data).map(([key, val]) => ({...val, fbKey: key})) : [];
@@ -121,6 +119,30 @@
             renderAdminList();
         });
 
+        // مزامنة الطلبات وعرضها في لوحة التحكم
+        onValue(ref(db, 'orders'), (snapshot) => {
+            const data = snapshot.val();
+            const ordersLog = document.getElementById('orders-log');
+            if (data) {
+                const ordersArray = Object.values(data).reverse();
+                ordersLog.innerHTML = ordersArray.map(order => `
+                    <div class="bg-white/5 p-4 rounded-2xl border border-white/10 text-right mb-3 text-[10px]">
+                        <div class="flex justify-between border-b border-white/10 pb-2 mb-2">
+                            <span class="text-[#d4af37]">${order.date}</span>
+                            <span class="font-bold">طلب جديد</span>
+                        </div>
+                        <p><strong>الاسم:</strong> ${order.customerName}</p>
+                        <p><strong>الهاتف:</strong> ${order.customerPhone}</p>
+                        <p><strong>المنتجات:</strong> ${order.products}</p>
+                        <p class="mt-2 text-[#d4af37] font-bold">الإجمالي: ${order.totalAmount}</p>
+                    </div>
+                `).join('');
+            } else {
+                ordersLog.innerHTML = '<p class="text-center opacity-50 text-xs">لا توجد طلبات بعد</p>';
+            }
+        });
+
+        // إضافة منتج
         document.getElementById('add-btn').onclick = () => {
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
@@ -137,76 +159,82 @@
             }
         };
 
-        window.deleteProduct = (key) => { if(confirm("حذف؟")) remove(ref(db, `products/${key}`)); };
-
-        function render() {
-            document.getElementById('product-list').innerHTML = products.map(p => `
-                <div class="premium-glass rounded-[2rem] overflow-hidden group border border-white/5 transition-all duration-500 hover:border-[#d4af37]/40">
-                    <img src="${p.img}" class="h-64 w-full object-cover transition-transform duration-700 group-hover:scale-110">
-                    <div class="p-6 text-right">
-                        <h3 class="font-bold text-sm mb-3 h-10">${p.name}</h3>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[#d4af37] font-black text-lg">${p.price} د.ج</span>
-                            <button onclick="addToCart(${p.id})" class="p-3 bg-white/5 rounded-full hover:bg-[#d4af37] transition-all">
-                                <i class="fa-solid fa-plus text-xs"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>`).join('');
-        }
-
-        window.addToCart = (id) => { cart.push(products.find(x => x.id === id)); updateUI(); };
-
-        function updateUI() {
-            document.getElementById('cart-count').innerText = cart.length;
-            if(cart.length > 0) {
-                document.getElementById('cart-footer').classList.remove('hidden');
-                let total = 0;
-                document.getElementById('cart-items').innerHTML = cart.map(item => {
-                    total += item.price;
-                    return `<div class="flex gap-4 items-center bg-white/5 p-3 rounded-2xl text-right">
-                        <div class="flex-1 text-[10px] font-bold">${item.name}</div>
-                        <div class="text-[#d4af37] font-bold text-xs">${item.price}</div>
-                    </div>`;
-                }).join('');
-                document.getElementById('total-price').innerText = total + " د.ج";
-            }
-        }
-
+        // تأكيد الطلب وحفظه
         document.getElementById('purchase-form').onsubmit = async (e) => {
             e.preventDefault();
             const name = document.getElementById('c-name').value;
             const phone = document.getElementById('c-phone').value;
             const items = cart.map(i => i.name).join(', ');
             const total = document.getElementById('total-price').innerText;
-            const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
-            
-            try {
-                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`);
-                alert("تم إرسال الطلب!");
-                cart = []; updateUI(); document.getElementById('order-modal').classList.add('hidden');
-            } catch { alert("خطأ في الإرسال"); }
+
+            const orderData = {
+                customerName: name,
+                customerPhone: phone,
+                products: items,
+                totalAmount: total,
+                date: new Date().toLocaleString('ar-DZ')
+            };
+
+            // حفظ في السحابة
+            const newOrderRef = push(ref(db, 'orders'));
+            set(newOrderRef, orderData).then(() => {
+                // إرسال لتلغرام
+                const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`);
+                
+                alert("✅ تم الطلب والحفظ بنجاح!");
+                cart = []; updateUI(); closeOrderForm();
+            });
         };
 
+        window.deleteProduct = (key) => { if(confirm("حذف؟")) remove(ref(db, `products/${key}`)); };
+        window.addToCart = (id) => { cart.push(products.find(x => x.id === id)); updateUI(); };
         window.toggleCart = () => document.getElementById('cart-sidebar').classList.toggle('hidden');
         window.showOrderForm = () => { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
         window.closeOrderForm = () => document.getElementById('order-modal').classList.add('hidden');
         window.closeAdmin = () => document.getElementById('admin-panel').classList.add('hidden');
 
+        function render() {
+            document.getElementById('product-list').innerHTML = products.map(p => `
+                <div class="premium-glass rounded-[2rem] overflow-hidden group border border-white/5">
+                    <img src="${p.img}" class="h-64 w-full object-cover">
+                    <div class="p-6 text-right">
+                        <h3 class="font-bold text-sm mb-3 h-10">${p.name}</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[#d4af37] font-black text-lg">${p.price} د.ج</span>
+                            <button onclick="addToCart(${p.id})" class="p-3 bg-white/5 rounded-full hover:bg-[#d4af37] transition-all"><i class="fa-solid fa-plus text-xs"></i></button>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function updateUI() {
+            document.getElementById('cart-count').innerText = cart.length;
+            if(cart.length > 0) {
+                document.getElementById('cart-footer').classList.remove('hidden');
+                let total = cart.reduce((sum, item) => sum + item.price, 0);
+                document.getElementById('cart-items').innerHTML = cart.map(item => `
+                    <div class="flex gap-4 items-center bg-white/5 p-3 rounded-2xl text-right text-[10px]">
+                        <div class="flex-1 font-bold">${item.name}</div>
+                        <div class="text-[#d4af37] font-bold">${item.price}</div>
+                    </div>`).join('');
+                document.getElementById('total-price').innerText = total + " د.ج";
+            }
+        }
+
         function renderAdminList() {
             document.getElementById('admin-delete-list').innerHTML = products.map(p => `
-                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl mb-1">
-                    <button onclick="deleteProduct('${p.fbKey}')" class="text-red-500 p-1"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                    <span class="text-[10px] font-bold">${p.name}</span>
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl mb-1 text-[10px]">
+                    <button onclick="deleteProduct('${p.fbKey}')" class="text-red-500"><i class="fa-solid fa-trash"></i></button>
+                    <span class="font-bold">${p.name}</span>
                 </div>`).join('');
         }
 
         let pressTimer;
-        const trigger = document.getElementById('admin-trigger');
-        trigger.onmousedown = () => pressTimer = setTimeout(() => {
+        document.getElementById('admin-trigger').onmousedown = () => pressTimer = setTimeout(() => {
             if(prompt("كلمة السر:") === "ademnawalformamatnhbek") document.getElementById('admin-panel').classList.remove('hidden');
         }, 2000);
-        trigger.onmouseup = () => clearTimeout(pressTimer);
+        document.getElementById('admin-trigger').onmouseup = () => clearTimeout(pressTimer);
     </script>
 </body>
 </html>
