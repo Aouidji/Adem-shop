@@ -13,9 +13,6 @@
         .premium-glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .gold-text { background: linear-gradient(to bottom, #f9e29d 0%, #d4af37 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .btn-gold { background: linear-gradient(45deg, #d4af37, #f9e29d); color: #1a1226; }
-        input[type="file"]::file-selector-button { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; margin-left: 10px; }
-        
-        /* نظام الطباعة */
         @media print { 
             body * { visibility: hidden; } 
             #print-area, #print-area * { visibility: visible; }
@@ -89,6 +86,8 @@
             <form id="purchase-form" class="space-y-5 text-right">
                 <input type="text" id="c-name" placeholder="الاسم الكامل" required class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none text-white">
                 <input type="tel" id="c-phone" placeholder="رقم الهاتف" required class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none text-white">
+                <input type="text" id="c-state" placeholder="الولاية" required class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none text-white">
+                <input type="text" id="c-city" placeholder="البلدية" required class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl outline-none text-white">
                 <button type="submit" class="w-full btn-gold py-5 rounded-2xl font-black shadow-2xl uppercase">تأكيد وشراء</button>
                 <button type="button" onclick="closeOrderForm()" class="w-full text-gray-500 text-xs">إلغاء</button>
             </form>
@@ -117,7 +116,6 @@
         let products = [];
         let cart = [];
 
-        // مزامنة المنتجات
         onValue(ref(db, 'products'), (snapshot) => {
             const data = snapshot.val();
             products = data ? Object.entries(data).map(([key, val]) => ({...val, fbKey: key})) : [];
@@ -125,7 +123,6 @@
             renderAdminProducts();
         });
 
-        // مزامنة الطلبات مع الأدوات (حذف، تعديل، طباعة)
         onValue(ref(db, 'orders'), (snapshot) => {
             const data = snapshot.val();
             const log = document.getElementById('orders-log');
@@ -134,35 +131,39 @@
                     <div class="bg-white/5 p-4 rounded-2xl border border-white/10 text-right mb-2">
                         <div class="flex justify-between items-center mb-2">
                             <div class="flex gap-2">
-                                <button onclick="printOrder('${key}')" class="text-blue-400 hover:text-white"><i class="fa-solid fa-print"></i></button>
-                                <button onclick="editOrder('${key}', '${order.customerName}')" class="text-yellow-400 hover:text-white"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="deleteOrder('${key}')" class="text-red-400 hover:text-white"><i class="fa-solid fa-trash"></i></button>
+                                <button onclick="printOrder('${key}')" class="text-blue-400"><i class="fa-solid fa-print"></i></button>
+                                <button onclick="deleteOrder('${key}')" class="text-red-400"><i class="fa-solid fa-trash"></i></button>
                             </div>
                             <span class="text-[9px] opacity-40">${order.date}</span>
                         </div>
                         <p class="text-[11px]"><strong>${order.customerName}</strong> | ${order.customerPhone}</p>
-                        <p class="text-[10px] opacity-70">${order.products}</p>
+                        <p class="text-[10px] opacity-70">الموقع: ${order.state} - ${order.city}</p>
+                        <p class="text-[10px] opacity-70">السلع: ${order.products}</p>
                         <p class="text-[#d4af37] font-bold text-xs mt-1">${order.totalAmount}</p>
                     </div>
                 `).join('');
             } else { log.innerHTML = '<p class="text-center opacity-30 text-xs">لا توجد طلبات</p>'; }
         });
 
-        // دوال الإدارة
         window.deleteOrder = (key) => { if(confirm("حذف الطلب؟")) remove(ref(db, `orders/${key}`)); };
-        window.editOrder = (key, name) => { 
-            const n = prompt("تعديل اسم الزبون:", name); 
-            if(n) update(ref(db, `orders/${key}`), { customerName: n }); 
-        };
+        
         window.printOrder = (key) => {
             onValue(ref(db, `orders/${key}`), (s) => {
                 const o = s.val();
-                document.getElementById('print-area').innerHTML = `<h2>وصل طلب</h2><p>الزبون: ${o.customerName}</p><p>الهاتف: ${o.customerPhone}</p><p>المنتجات: ${o.products}</p><h3>الإجمالي: ${o.totalAmount}</h3>`;
+                document.getElementById('print-area').innerHTML = `
+                    <div style="direction:rtl; text-align:right;">
+                        <h2>وصل طلب متجر Luxury</h2>
+                        <p><strong>الزبون:</strong> ${o.customerName}</p>
+                        <p><strong>الهاتف:</strong> ${o.customerPhone}</p>
+                        <p><strong>العنوان:</strong> ${o.state}، ${o.city}</p>
+                        <p><strong>المنتجات:</strong> ${o.products}</p>
+                        <hr>
+                        <h3>المبلغ الإجمالي: ${o.totalAmount}</h3>
+                    </div>`;
                 window.print();
             }, { onlyOnce: true });
         };
 
-        // إضافة منتج
         document.getElementById('add-btn').onclick = () => {
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
@@ -177,23 +178,24 @@
             }
         };
 
-        // إرسال الطلب
         document.getElementById('purchase-form').onsubmit = (e) => {
             e.preventDefault();
             const order = {
                 customerName: document.getElementById('c-name').value,
                 customerPhone: document.getElementById('c-phone').value,
+                state: document.getElementById('c-state').value,
+                city: document.getElementById('c-city').value,
                 products: cart.map(i => i.name).join(', '),
                 totalAmount: document.getElementById('total-price').innerText,
                 date: new Date().toLocaleString('ar-DZ')
             };
             push(ref(db, 'orders'), order).then(() => {
-                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent('📦 طلب جديد: ' + order.customerName)}`);
-                alert("تم الإرسال!"); cart = []; updateUI(); closeOrderForm();
+                const msg = `📦 طلب جديد\nالاسم: ${order.customerName}\nالهاتف: ${order.customerPhone}\nالولاية: ${order.state}\nالبلدية: ${order.city}\nالمنتجات: ${order.products}\nالإجمالي: ${order.totalAmount}`;
+                fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`);
+                alert("تم إرسال الطلب بنجاح!"); cart = []; updateUI(); closeOrderForm();
             });
         };
 
-        // وظائف الواجهة
         window.render = () => {
             document.getElementById('product-list').innerHTML = products.map(p => `
                 <div class="premium-glass rounded-[2rem] overflow-hidden group">
@@ -215,7 +217,7 @@
                 document.getElementById('cart-footer').classList.remove('hidden');
                 document.getElementById('cart-items').innerHTML = cart.map(i => `<div class="p-3 bg-white/5 rounded-xl text-right text-xs mb-2">${i.name}</div>`).join('');
                 document.getElementById('total-price').innerText = cart.reduce((s, i) => s + i.price, 0) + " د.ج";
-            }
+            } else { document.getElementById('cart-footer').classList.add('hidden'); document.getElementById('cart-items').innerHTML = ""; }
         };
 
         window.renderAdminProducts = () => {
@@ -225,7 +227,7 @@
                     <span>${p.name}</span>
                 </div>`).join('');
         };
-        window.deleteProduct = (k) => { if(confirm("حذف؟")) remove(ref(db, `products/${k}`)); };
+        window.deleteProduct = (k) => { if(confirm("حذف المنتج؟")) remove(ref(db, `products/${k}`)); };
         window.toggleCart = () => document.getElementById('cart-sidebar').classList.toggle('hidden');
         window.showOrderForm = () => { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
         window.closeOrderForm = () => document.getElementById('order-modal').classList.add('hidden');
