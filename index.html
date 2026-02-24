@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>adem Store </title>
+    <title>adem Store</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -13,20 +13,8 @@
         .premium-glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .gold-text { background: linear-gradient(to bottom, #f9e29d 0%, #d4af37 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .btn-gold { background: linear-gradient(45deg, #d4af37, #f9e29d); color: #1a1226; }
-        input[type="file"]::file-selector-button {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; padding: 20px; direction: rtl; }
-        }
+        input[type="file"]::file-selector-button { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; margin-left: 10px; }
+        @media print { body * { visibility: hidden; } #print-area, #print-area * { visibility: visible; } #print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; padding: 20px; direction: rtl; } }
     </style>
 </head>
 <body class="select-none">
@@ -52,7 +40,6 @@
     <div id="admin-panel" class="fixed inset-0 z-[80] hidden flex items-center justify-center p-4 bg-[#0d0915]/95 backdrop-blur-3xl">
         <div class="premium-glass w-full max-w-4xl rounded-[2.5rem] p-8 border-white/10 max-h-[90vh] overflow-y-auto">
             <h2 class="text-2xl font-bold mb-6 gold-text text-center">لوحة الإدارة الكاملة</h2>
-            
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div class="bg-white/5 p-6 rounded-3xl border border-white/5 text-right">
                     <h3 class="text-sm font-bold mb-4 opacity-60 text-yellow-500">إضافة قطعة جديدة</h3>
@@ -60,21 +47,18 @@
                         <input type="text" id="p-name" placeholder="اسم المنتج" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none text-sm text-white">
                         <input type="number" id="p-price" placeholder="السعر (د.ج)" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl outline-none text-sm text-white">
                         <input type="file" id="p-file" accept="image/*" class="w-full bg-white/5 border border-white/10 p-2 rounded-xl text-xs text-white">
-                        <button onclick="addProduct()" class="w-full btn-gold py-3 rounded-xl font-bold text-sm uppercase">نشر الآن</button>
+                        <button id="add-btn" class="w-full btn-gold py-3 rounded-xl font-bold text-sm uppercase">نشر الآن</button>
                     </div>
                     <div class="mt-6">
                         <h3 class="text-xs font-bold mb-3 opacity-60">المنتجات الحالية:</h3>
                         <div id="admin-delete-list" class="space-y-2 max-h-40 overflow-y-auto"></div>
                     </div>
                 </div>
-
                 <div class="bg-white/5 p-6 rounded-3xl border border-white/5 text-right">
                     <h3 class="text-sm font-bold mb-4 opacity-60 text-yellow-500">سجل الطلبات الواردة</h3>
-                    <div id="orders-log" class="space-y-3 max-h-[50vh] overflow-y-auto">
-                        </div>
+                    <div id="orders-log" class="space-y-3 max-h-[50vh] overflow-y-auto"></div>
                 </div>
             </div>
-
             <button onclick="closeAdmin()" class="w-full mt-8 text-gray-500 hover:text-white transition text-xs uppercase tracking-widest">إغلاق اللوحة</button>
         </div>
     </div>
@@ -107,111 +91,55 @@
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyBTaexoMpJM7FIeOg7A5TVyCV2g6dfj60o",
+          authDomain: "adem-store-d8dfe.firebaseapp.com",
+          databaseURL: "https://adem-store-d8dfe-default-rtdb.firebaseio.com",
+          projectId: "adem-store-d8dfe",
+          storageBucket: "adem-store-d8dfe.firebasestorage.app",
+          messagingSenderId: "879349550315",
+          appId: "1:879349550315:web:254574fd4ad0be9ad7c2ae"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        let products = [];
+        let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
+        let cart = [];
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
         const CHAT_ID = "6256220808";
 
-        let products = JSON.parse(localStorage.getItem('luxuryStoreDB')) || [];
-        let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
-        let cart = [];
-        let pressTimer;
+        // مزامنة المنتجات حياً من Firebase
+        onValue(ref(db, 'products'), (snapshot) => {
+            const data = snapshot.val();
+            products = data ? Object.entries(data).map(([key, val]) => ({...val, fbKey: key})) : [];
+            render();
+            renderAdminList();
+        });
 
-        const trigger = document.getElementById('admin-trigger');
-        trigger.onmousedown = () => pressTimer = setTimeout(askPass, 2000);
-        trigger.onmouseup = () => clearTimeout(pressTimer);
-        trigger.ontouchstart = () => pressTimer = setTimeout(askPass, 2000);
-        trigger.ontouchend = () => clearTimeout(pressTimer);
-
-        function askPass() {
-            const pInput = prompt("كلمة السر:");
-            if (pInput && pInput.trim() === "ademnawalformamatnhbek") {
-                renderAdminList();
-                renderOrders();
-                document.getElementById('admin-panel').classList.remove('hidden');
-            }
-        }
-
-        function closeAdmin() { document.getElementById('admin-panel').classList.add('hidden'); }
-
-        function addProduct() {
+        // إضافة منتج
+        document.getElementById('add-btn').onclick = () => {
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
-            const fileInput = document.getElementById('p-file');
-            const file = fileInput.files[0];
-
+            const file = document.getElementById('p-file').files[0];
             if (name && price && file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    products.push({ id: Date.now(), name, price: parseInt(price), img: e.target.result });
-                    localStorage.setItem('luxuryStoreDB', JSON.stringify(products));
-                    render(); renderAdminList();
+                reader.onload = (e) => {
+                    const newRef = push(ref(db, 'products'));
+                    set(newRef, { id: Date.now(), name, price: parseInt(price), img: e.target.result });
                     document.getElementById('p-name').value = '';
                     document.getElementById('p-price').value = '';
-                    fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
-            } else { alert("يرجى ملء كافة الحقول"); }
-        }
-
-        function renderAdminList() {
-            const list = document.getElementById('admin-delete-list');
-            list.innerHTML = products.map(p => `
-                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl border border-white/5">
-                    <button onclick="deleteProduct(${p.id})" class="text-red-500 p-1 text-xs"><i class="fa-solid fa-trash"></i></button>
-                    <span class="text-[10px] font-bold">${p.name}</span>
-                    <img src="${p.img}" class="w-8 h-8 rounded object-cover">
-                </div>
-            `).join('');
-        }
-
-        function renderOrders() {
-            const list = document.getElementById('orders-log');
-            list.innerHTML = orders.map(o => `
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-right relative group">
-                    <div class="text-xs font-bold gold-text mb-1">${o.name}</div>
-                    <div class="text-[10px] opacity-70 mb-2">${o.phone} | ${o.state} | ${o.city}</div>
-                    <div class="text-[10px] border-t border-white/5 pt-2 mb-3">${o.items}</div>
-                    <div class="flex gap-2">
-                        <button onclick="printOrder(${o.id})" class="flex-1 bg-blue-600/20 text-blue-400 text-[10px] py-2 rounded-lg hover:bg-blue-600 hover:text-white transition">تعديل وطباعة</button>
-                        <button onclick="deleteOrder(${o.id})" class="bg-red-600/20 text-red-400 text-[10px] px-3 rounded-lg"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function printOrder(id) {
-            const o = orders.find(x => x.id === id);
-            const newName = prompt("تعديل الاسم في الوصل:", o.name) || o.name;
-            const newTotal = prompt("تعديل السعر النهائي:", o.total) || o.total;
-
-            const pArea = document.getElementById('print-area');
-            pArea.innerHTML = `
-                <div style="border: 2px solid black; padding: 20px; font-family: 'Arial'; text-align: right;">
-                    <h2 style="text-align: center;">وصل طلبية LUXURY</h2>
-                    <hr>
-                    <p><strong>الاسم:</strong> ${newName}</p>
-                    <p><strong>الهاتف:</strong> ${o.phone}</p>
-                    <p><strong>العنوان:</strong> ${o.state} - ${o.city}</p>
-                    <p><strong>الطلبيات:</strong><br>${o.items}</p>
-                    <h3 style="text-align: left; background: #eee; padding: 10px;">الإجمالي: ${newTotal}</h3>
-                </div>
-            `;
-            window.print();
-        }
-
-        function deleteOrder(id) {
-            if(confirm("حذف الطلب من السجل؟")) {
-                orders = orders.filter(x => x.id !== id);
-                localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
-                renderOrders();
             }
-        }
+        };
 
-        function deleteProduct(id) {
-            products = products.filter(p => p.id !== id);
-            localStorage.setItem('luxuryStoreDB', JSON.stringify(products));
-            render(); renderAdminList();
-        }
+        window.deleteProduct = (key) => { if(confirm("حذف؟")) remove(ref(db, `products/${key}`)); };
 
         function render() {
             document.getElementById('product-list').innerHTML = products.map(p => `
@@ -221,17 +149,16 @@
                         <h3 class="font-bold text-sm mb-3 h-10">${p.name}</h3>
                         <div class="flex justify-between items-center">
                             <span class="text-[#d4af37] font-black text-lg">${p.price} د.ج</span>
-                            <button onclick="addToCart(${p.id})" class="p-3 bg-white/5 rounded-full hover:bg-[#d4af37] hover:text-[#1a1226] transition-all">
+                            <button onclick="addToCart(${p.id})" class="p-3 bg-white/5 rounded-full hover:bg-[#d4af37] transition-all">
                                 <i class="fa-solid fa-plus text-xs"></i>
                             </button>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
 
-        function addToCart(id) { cart.push(products.find(x => x.id === id)); updateUI(); }
-        
+        window.addToCart = (id) => { cart.push(products.find(x => x.id === id)); updateUI(); };
+
         function updateUI() {
             document.getElementById('cart-count').innerText = cart.length;
             if(cart.length > 0) {
@@ -248,41 +175,40 @@
             }
         }
 
-        function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('hidden'); }
-        function showOrderForm() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); }
-        function closeOrderForm() { document.getElementById('order-modal').classList.add('hidden'); }
-
         document.getElementById('purchase-form').onsubmit = async (e) => {
             e.preventDefault();
             const name = document.getElementById('c-name').value;
             const phone = document.getElementById('c-phone').value;
-            const state = document.getElementById('c-state').value;
-            const city = document.getElementById('c-city').value;
-            const total = document.getElementById('total-price').innerText;
             const items = cart.map(i => i.name).join(', ');
-
-            const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالولاية: ${state}\nالبلدية: ${city}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
-            
-            // الحل: استخدام طريقة الإرسال المباشرة عبر الرابط لضمان التوافق التام
-            const telegramUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`;
+            const total = document.getElementById('total-price').innerText;
+            const msg = `📦 طلب جديد\nالاسم: ${name}\nالهاتف: ${phone}\nالمنتجات: ${items}\nالإجمالي: ${total}`;
             
             try {
-                const response = await fetch(telegramUrl, { mode: 'no-cors' }); 
-                // نستخدم no-cors لتجنب مشاكل المتصفحات الأمنية عند الإرسال المباشر
-                
-                // حفظ في السجل المحلي
-                const order = { id: Date.now(), name, phone, state, city, items, total };
-                orders.unshift(order);
-                localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
-                
-                alert("تم إرسال الطلب بنجاح!");
-                cart = []; updateUI(); closeOrderForm();
-            } catch (err) {
-                alert("تم حفظ الطلب محلياً، تأكد من اتصال الإنترنت.");
-            }
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(msg)}`);
+                alert("تم إرسال الطلب!");
+                cart = []; updateUI(); document.getElementById('order-modal').classList.add('hidden');
+            } catch { alert("خطأ في الإرسال"); }
         };
 
-        render();
+        window.toggleCart = () => document.getElementById('cart-sidebar').classList.toggle('hidden');
+        window.showOrderForm = () => { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
+        window.closeOrderForm = () => document.getElementById('order-modal').classList.add('hidden');
+        window.closeAdmin = () => document.getElementById('admin-panel').classList.add('hidden');
+
+        function renderAdminList() {
+            document.getElementById('admin-delete-list').innerHTML = products.map(p => `
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl mb-1">
+                    <button onclick="deleteProduct('${p.fbKey}')" class="text-red-500 p-1"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                    <span class="text-[10px] font-bold">${p.name}</span>
+                </div>`).join('');
+        }
+
+        let pressTimer;
+        const trigger = document.getElementById('admin-trigger');
+        trigger.onmousedown = () => pressTimer = setTimeout(() => {
+            if(prompt("كلمة السر:") === "ademnawalformamatnhbek") document.getElementById('admin-panel').classList.remove('hidden');
+        }, 2000);
+        trigger.onmouseup = () => clearTimeout(pressTimer);
     </script>
 </body>
 </html>
