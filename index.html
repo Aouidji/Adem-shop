@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Luxury Store | إدارة المنتجات</title>
+    <title>Adem shop |  متجر الفخامة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -92,80 +92,70 @@
         </div>
     </div>
 
-    <script>
-        // البيانات الخاصة بك
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // 1. ضع إعدادات Firebase الخاصة بك هنا (Firebase Config)
+        const firebaseConfig = {
+            apiKey: "AIzaSy...",
+            authDomain: "your-app.firebaseapp.com",
+            databaseURL: "https://your-app-default-rtdb.firebaseio.com",
+            projectId: "your-app",
+            storageBucket: "your-app.appspot.com",
+            messagingSenderId: "...",
+            appId: "..."
+        };
+
+        // تهيئة Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const productsRef = ref(db, 'products');
+
+        // متغيرات الموقع
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
         const CHAT_ID = "6335106371";
 
-        let products = JSON.parse(localStorage.getItem('luxuryStoreDB')) || [];
+        let products = [];
         let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
         let cart = [];
-        let pressTimer;
 
-        // الدخول للإدارة
-        document.getElementById('admin-trigger').onmousedown = () => pressTimer = setTimeout(askPass, 2000);
-        function askPass() {
-            if (prompt("كلمة السر:") === "ademnawalformamatnhbek") {
-                renderAdminList(); renderOrders();
-                document.getElementById('admin-panel').classList.remove('hidden');
-            }
-        }
-        function closeAdmin() { document.getElementById('admin-panel').classList.add('hidden'); }
+        // جلب المنتجات من فايربيس بشكل حي
+        onValue(productsRef, (snapshot) => {
+            const data = snapshot.val();
+            products = data ? Object.keys(data).map(key => ({...data[key], firebaseKey: key})) : [];
+            render();
+            renderAdminList();
+        });
 
-        function addProduct() {
+        // إضافة منتج لفايربيس
+        window.addProduct = function() {
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
             const file = document.getElementById('p-file').files[0];
             if (name && price && file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    products.push({ id: Date.now(), name, price: parseInt(price), img: e.target.result });
-                    localStorage.setItem('luxuryStoreDB', JSON.stringify(products));
-                    render(); renderAdminList();
+                    const newProdRef = push(productsRef);
+                    set(newProdRef, { id: Date.now(), name, price: parseInt(price), img: e.target.result });
+                    document.getElementById('p-name').value = '';
+                    document.getElementById('p-price').value = '';
+                    document.getElementById('p-file').value = '';
                 };
                 reader.readAsDataURL(file);
             }
-        }
+        };
 
-        function renderAdminList() {
-            document.getElementById('admin-delete-list').innerHTML = products.map(p => `
-                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl border border-white/5">
-                    <button onclick="deleteProduct(${p.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
-                    <span class="text-[10px] font-bold">${p.name}</span>
-                    <img src="${p.img}" class="w-8 h-8 rounded object-cover">
-                </div>
-            `).join('');
-        }
+        // حذف منتج من فايربيس
+        window.deleteProduct = function(id) {
+            const item = products.find(p => p.id === id);
+            if(item && item.firebaseKey) {
+                remove(ref(db, 'products/' + item.firebaseKey));
+            }
+        };
 
-        function renderOrders() {
-            document.getElementById('orders-log').innerHTML = orders.map(o => `
-                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-right mb-2">
-                    <div class="text-xs font-bold gold-text mb-1">${o.name}</div>
-                    <div class="text-[10px] opacity-70 mb-2">${o.phone} | ${o.state}</div>
-                    <div class="flex gap-2">
-                        <button onclick="printOrder(${o.id})" class="flex-1 bg-blue-600/20 text-blue-400 text-[10px] py-2 rounded-lg">طباعة</button>
-                        <button onclick="deleteOrder(${o.id})" class="bg-red-600/20 text-red-400 px-3 rounded-lg"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function printOrder(id) {
-            const o = orders.find(x => x.id === id);
-            const newName = prompt("تعديل الاسم للوصل:", o.name) || o.name;
-            const pArea = document.getElementById('print-area');
-            pArea.innerHTML = `<div style="border:2px solid #000; padding:20px; direction:rtl;">
-                <h2 style="text-align:center;">Luxury Store</h2><hr>
-                <p>الاسم: ${newName}</p><p>الهاتف: ${o.phone}</p><p>العنوان: ${o.state} - ${o.city}</p>
-                <p>المنتجات: ${o.items}</p><hr><h3>الإجمالي: ${o.total}</h3>
-            </div>`;
-            window.print();
-        }
-
-        function deleteOrder(id) { orders = orders.filter(x => x.id !== id); localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders)); renderOrders(); }
-        function deleteProduct(id) { products = products.filter(p => p.id !== id); localStorage.setItem('luxuryStoreDB', JSON.stringify(products)); render(); renderAdminList(); }
-
-        function render() {
+        // عرض المنتجات للزبائن
+        window.render = function() {
             document.getElementById('product-list').innerHTML = products.map(p => `
                 <div class="premium-glass rounded-[2rem] overflow-hidden group border border-white/5 transition-all">
                     <img src="${p.img}" class="h-64 w-full object-cover">
@@ -178,10 +168,26 @@
                     </div>
                 </div>
             `).join('');
-        }
+        };
 
-        function addToCart(id) { cart.push(products.find(x => x.id === id)); updateUI(); }
-        function updateUI() {
+        // عرض المنتجات في لوحة الإدارة
+        window.renderAdminList = function() {
+            document.getElementById('admin-delete-list').innerHTML = products.map(p => `
+                <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl border border-white/5">
+                    <button onclick="deleteProduct(${p.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
+                    <span class="text-[10px] font-bold">${p.name}</span>
+                    <img src="${p.img}" class="w-8 h-8 rounded object-cover">
+                </div>
+            `).join('');
+        };
+
+        // السلة والطلبات
+        window.addToCart = function(id) { 
+            const item = products.find(x => x.id === id);
+            if(item) { cart.push(item); updateUI(); }
+        };
+
+        window.updateUI = function() {
             document.getElementById('cart-count').innerText = cart.length;
             if(cart.length > 0) {
                 document.getElementById('cart-footer').classList.remove('hidden');
@@ -189,12 +195,15 @@
                 document.getElementById('cart-items').innerHTML = cart.map(item => `<div class="flex justify-between text-[10px] bg-white/5 p-2 rounded-lg"><span>${item.price}</span><span>${item.name}</span></div>`).join('');
                 document.getElementById('total-price').innerText = total + " د.ج";
             }
-        }
+        };
 
-        function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('hidden'); }
-        function showOrderForm() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); }
-        function closeOrderForm() { document.getElementById('order-modal').classList.add('hidden'); }
+        // وظائف الواجهة
+        window.toggleCart = function() { document.getElementById('cart-sidebar').classList.toggle('hidden'); };
+        window.showOrderForm = function() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
+        window.closeOrderForm = function() { document.getElementById('order-modal').classList.add('hidden'); };
+        window.closeAdmin = function() { document.getElementById('admin-panel').classList.add('hidden'); };
 
+        // إرسال الطلب (تلغرام + سجل محلي)
         document.getElementById('purchase-form').onsubmit = async (e) => {
             e.preventDefault();
             const n = document.getElementById('cust-name').value;
@@ -215,17 +224,49 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chat_id: CHAT_ID, text: msg })
                 });
-                const res = await response.json();
-                if(res.ok) {
-                    alert("✅ تم إرسال الطلب بنجاح!");
-                    cart = []; updateUI(); closeOrderForm();
-                } else {
-                    alert("❌ خطأ تلغرام: " + res.description);
-                }
-            } catch (err) { alert("⚠️ فشل الاتصال بالإنترنت."); }
+                if(response.ok) { alert("✅ تم إرسال الطلب!"); cart = []; updateUI(); closeOrderForm(); }
+            } catch (err) { alert("⚠️ فشل الإرسال."); }
         };
 
-        render();
+        // الدخول للإدارة
+        let pressTimer;
+        document.getElementById('admin-trigger').onmousedown = () => pressTimer = setTimeout(() => {
+            if (prompt("كلمة السر:") === "ademnawalformamatnhbek") {
+                renderOrders();
+                document.getElementById('admin-panel').classList.remove('hidden');
+            }
+        }, 2000);
+
+        window.renderOrders = function() {
+            document.getElementById('orders-log').innerHTML = orders.map(o => `
+                <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-right mb-2">
+                    <div class="text-xs font-bold gold-text mb-1">${o.name}</div>
+                    <div class="text-[10px] opacity-70 mb-2">${o.phone} | ${o.state}</div>
+                    <div class="flex gap-2">
+                        <button onclick="printOrder(${o.id})" class="flex-1 bg-blue-600/20 text-blue-400 text-[10px] py-2 rounded-lg">طباعة</button>
+                        <button onclick="deleteOrder(${o.id})" class="bg-red-600/20 text-red-400 px-3 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.printOrder = function(id) {
+            const o = orders.find(x => x.id === id);
+            const newName = prompt("تعديل الاسم للوصل:", o.name) || o.name;
+            const pArea = document.getElementById('print-area');
+            pArea.innerHTML = `<div style="border:2px solid #000; padding:20px; direction:rtl; color: black; background: white;">
+                <h2 style="text-align:center;">Luxury Store</h2><hr>
+                <p>الاسم: ${newName}</p><p>الهاتف: ${o.phone}</p><p>العنوان: ${o.state} - ${o.city}</p>
+                <p>المنتجات: ${o.items}</p><hr><h3>الإجمالي: ${o.total}</h3>
+            </div>`;
+            window.print();
+        };
+
+        window.deleteOrder = function(id) { 
+            orders = orders.filter(x => x.id !== id); 
+            localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders)); 
+            renderOrders(); 
+        };
     </script>
 </body>
 </html>
