@@ -3,24 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adem Store |  متجر الفخامة</title>
+    <title>Adem Store | متجر الفخامة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
     <style>
         :root { --accent: #d4af37; }
         body { font-family: 'Tajawal', sans-serif; background: radial-gradient(circle at top right, #3d2b5e, #1a1226); min-height: 100vh; color: #f3f4f6; }
         .premium-glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .gold-text { background: linear-gradient(to bottom, #f9e29d 0%, #d4af37 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .btn-gold { background: linear-gradient(45deg, #d4af37, #f9e29d); color: #1a1226; }
-        input[type="file"]::file-selector-button {
-            background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; margin-left: 10px;
-        }
-        @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; padding: 20px; direction: rtl; }
-        }
+        input[type="file"]::file-selector-button { background: rgba(255, 255, 255, 0.1); color: white; border: none; padding: 5px 10px; border-radius: 8px; cursor: pointer; margin-left: 10px; }
+        @media print { body * { visibility: hidden; } #print-area, #print-area * { visibility: visible; } #print-area { position: absolute; left: 0; top: 0; width: 100%; color: black !important; background: white !important; padding: 20px; direction: rtl; } }
     </style>
 </head>
 <body class="select-none">
@@ -92,12 +90,9 @@
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // إعدادات فايربيس الخاصة بك
-        const firebaseConfig = {
+    <script>
+        // إعدادات فايربيس ديمو شوب الخاصة بك
+        var firebaseConfig = {
           apiKey: "AIzaSyARDJu3-UEDwN4aDf2S5g3DNybZBeZJ2x0",
           authDomain: "dimo-shop-59a4c.firebaseapp.com",
           databaseURL: "https://dimo-shop-59a4c-default-rtdb.firebaseio.com",
@@ -107,9 +102,10 @@
           appId: "1:703670238398:web:f132a544715ff9aa7032ef"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const productsRef = ref(db, 'products');
+        // تهيئة فايربيس
+        firebase.initializeApp(firebaseConfig);
+        var db = firebase.database();
+        var productsRef = db.ref('products');
 
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
         const CHAT_ID = "6335106371";
@@ -118,47 +114,50 @@
         let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
         let cart = [];
 
-        // جلب المنتجات وعرضها
-        onValue(productsRef, (snapshot) => {
+        // جلب البيانات فوراً
+        productsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             products = data ? Object.keys(data).map(key => ({...data[key], firebaseKey: key})) : [];
             render();
             renderAdminList();
         });
 
-        // إضافة منتج لفايربيس
-        window.addProduct = function() {
+        function addProduct() {
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
             const file = document.getElementById('p-file').files[0];
             
             if (name && price && file) {
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    const newProdRef = push(productsRef);
-                    set(newProdRef, { id: Date.now(), name, price: parseInt(price), img: e.target.result })
-                    .then(() => {
+                reader.onload = function(e) {
+                    productsRef.push({
+                        id: Date.now(),
+                        name: name,
+                        price: parseInt(price),
+                        img: e.target.result
+                    }).then(() => {
                         alert("✅ تم النشر بنجاح!");
                         document.getElementById('p-name').value = '';
                         document.getElementById('p-price').value = '';
                         document.getElementById('p-file').value = '';
-                    })
-                    .catch((error) => alert("❌ خطأ في القاعدة: " + error.message));
+                    }).catch((err) => {
+                        alert("❌ خطأ: " + err.message);
+                    });
                 };
                 reader.readAsDataURL(file);
             } else {
-                alert("⚠️ املأ الفراغات واختر صورة");
+                alert("⚠️ يرجى إكمال جميع الحقول");
             }
-        };
+        }
 
-        window.deleteProduct = function(id) {
+        function deleteProduct(id) {
             const item = products.find(p => p.id === id);
             if(item && item.firebaseKey) {
-                remove(ref(db, 'products/' + item.firebaseKey));
+                db.ref('products/' + item.firebaseKey).remove();
             }
-        };
+        }
 
-        window.render = function() {
+        function render() {
             document.getElementById('product-list').innerHTML = products.map(p => `
                 <div class="premium-glass rounded-[2rem] overflow-hidden group border border-white/5 transition-all">
                     <img src="${p.img}" class="h-64 w-full object-cover">
@@ -171,9 +170,9 @@
                     </div>
                 </div>
             `).join('');
-        };
+        }
 
-        window.renderAdminList = function() {
+        function renderAdminList() {
             document.getElementById('admin-delete-list').innerHTML = products.map(p => `
                 <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl border border-white/5">
                     <button onclick="deleteProduct(${p.id})" class="text-red-500 p-2"><i class="fa-solid fa-trash-can"></i></button>
@@ -181,14 +180,14 @@
                     <img src="${p.img}" class="w-8 h-8 rounded object-cover">
                 </div>
             `).join('');
-        };
+        }
 
-        window.addToCart = function(id) { 
+        function addToCart(id) { 
             const item = products.find(x => x.id === id);
             if(item) { cart.push(item); updateUI(); }
-        };
+        }
 
-        window.updateUI = function() {
+        function updateUI() {
             document.getElementById('cart-count').innerText = cart.length;
             if(cart.length > 0) {
                 document.getElementById('cart-footer').classList.remove('hidden');
@@ -196,14 +195,14 @@
                 document.getElementById('cart-items').innerHTML = cart.map(item => `<div class="flex justify-between text-[10px] bg-white/5 p-2 rounded-lg"><span>${item.price}</span><span>${item.name}</span></div>`).join('');
                 document.getElementById('total-price').innerText = total + " د.ج";
             }
-        };
+        }
 
-        window.toggleCart = function() { document.getElementById('cart-sidebar').classList.toggle('hidden'); };
-        window.showOrderForm = function() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
-        window.closeOrderForm = function() { document.getElementById('order-modal').classList.add('hidden'); };
-        window.closeAdmin = function() { document.getElementById('admin-panel').classList.add('hidden'); };
+        function toggleCart() { document.getElementById('cart-sidebar').classList.toggle('hidden'); }
+        function showOrderForm() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); }
+        function closeOrderForm() { document.getElementById('order-modal').classList.add('hidden'); }
+        function closeAdmin() { document.getElementById('admin-panel').classList.add('hidden'); }
 
-        document.getElementById('purchase-form').onsubmit = async (e) => {
+        document.getElementById('purchase-form').onsubmit = async function(e) {
             e.preventDefault();
             const n = document.getElementById('cust-name').value;
             const ph = document.getElementById('cust-phone').value;
@@ -211,10 +210,6 @@
             const ct = document.getElementById('cust-city').value;
             const tot = document.getElementById('total-price').innerText;
             const its = cart.map(i => i.name).join(', ');
-
-            const order = { id: Date.now(), name: n, phone: ph, state: st, city: ct, items: its, total: tot };
-            orders.unshift(order);
-            localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders));
 
             const msg = `📦 طلب جديد\nالاسم: ${n}\nالهاتف: ${ph}\nالولاية: ${st}\nالبلدية: ${ct}\nالمنتجات: ${its}\nالإجمالي: ${tot}`;
             
@@ -228,14 +223,16 @@
         };
 
         let pressTimer;
-        document.getElementById('admin-trigger').onmousedown = () => pressTimer = setTimeout(() => {
-            if (prompt("كلمة السر:") === "ademnawalformamatnhbek") {
-                renderOrders();
-                document.getElementById('admin-panel').classList.remove('hidden');
-            }
-        }, 2000);
+        document.getElementById('admin-trigger').addEventListener('mousedown', () => {
+            pressTimer = setTimeout(() => {
+                if (prompt("كلمة السر:") === "ademnawalformamatnhbek") {
+                    renderOrders();
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                }
+            }, 2000);
+        });
 
-        window.renderOrders = function() {
+        function renderOrders() {
             document.getElementById('orders-log').innerHTML = orders.map(o => `
                 <div class="bg-white/5 p-4 rounded-2xl border border-white/5 text-right mb-2">
                     <div class="text-xs font-bold gold-text mb-1">${o.name}</div>
@@ -246,9 +243,9 @@
                     </div>
                 </div>
             `).join('');
-        };
+        }
 
-        window.printOrder = function(id) {
+        function printOrder(id) {
             const o = orders.find(x => x.id === id);
             const pArea = document.getElementById('print-area');
             pArea.innerHTML = `<div style="border:2px solid #000; padding:20px; direction:rtl; color:black; background:white;">
@@ -257,13 +254,13 @@
                 <p>المنتجات: ${o.items}</p><hr><h3>الإجمالي: ${o.total}</h3>
             </div>`;
             window.print();
-        };
+        }
 
-        window.deleteOrder = function(id) { 
+        function deleteOrder(id) { 
             orders = orders.filter(x => x.id !== id); 
             localStorage.setItem('luxuryOrdersDB', JSON.stringify(orders)); 
             renderOrders(); 
-        };
+        }
     </script>
 </body>
 </html>
