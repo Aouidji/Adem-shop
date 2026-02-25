@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adem shop |  متجر الفخامة</title>
+    <title>Adem Store |  متجر الفخامة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;500;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -96,23 +96,21 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getDatabase, ref, set, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-        // 1. ضع إعدادات Firebase الخاصة بك هنا (Firebase Config)
+        // إعدادات فايربيس الخاصة بك
         const firebaseConfig = {
-            apiKey: "AIzaSy...",
-            authDomain: "your-app.firebaseapp.com",
-            databaseURL: "https://your-app-default-rtdb.firebaseio.com",
-            projectId: "your-app",
-            storageBucket: "your-app.appspot.com",
-            messagingSenderId: "...",
-            appId: "..."
+          apiKey: "AIzaSyARDJu3-UEDwN4aDf2S5g3DNybZBeZJ2x0",
+          authDomain: "dimo-shop-59a4c.firebaseapp.com",
+          databaseURL: "https://dimo-shop-59a4c-default-rtdb.firebaseio.com",
+          projectId: "dimo-shop-59a4c",
+          storageBucket: "dimo-shop-59a4c.firebasestorage.app",
+          messagingSenderId: "703670238398",
+          appId: "1:703670238398:web:f132a544715ff9aa7032ef"
         };
 
-        // تهيئة Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const productsRef = ref(db, 'products');
 
-        // متغيرات الموقع
         const BOT_TOKEN = "8784614376:AAHochI758ttu6Fg9P2byf-7ZyjDhn_Pi0Q";
         const CHAT_ID = "6335106371";
 
@@ -120,7 +118,7 @@
         let orders = JSON.parse(localStorage.getItem('luxuryOrdersDB')) || [];
         let cart = [];
 
-        // جلب المنتجات من فايربيس بشكل حي
+        // جلب المنتجات وعرضها
         onValue(productsRef, (snapshot) => {
             const data = snapshot.val();
             products = data ? Object.keys(data).map(key => ({...data[key], firebaseKey: key})) : [];
@@ -133,20 +131,26 @@
             const name = document.getElementById('p-name').value;
             const price = document.getElementById('p-price').value;
             const file = document.getElementById('p-file').files[0];
+            
             if (name && price && file) {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const newProdRef = push(productsRef);
-                    set(newProdRef, { id: Date.now(), name, price: parseInt(price), img: e.target.result });
-                    document.getElementById('p-name').value = '';
-                    document.getElementById('p-price').value = '';
-                    document.getElementById('p-file').value = '';
+                    set(newProdRef, { id: Date.now(), name, price: parseInt(price), img: e.target.result })
+                    .then(() => {
+                        alert("✅ تم النشر بنجاح!");
+                        document.getElementById('p-name').value = '';
+                        document.getElementById('p-price').value = '';
+                        document.getElementById('p-file').value = '';
+                    })
+                    .catch((error) => alert("❌ خطأ في القاعدة: " + error.message));
                 };
                 reader.readAsDataURL(file);
+            } else {
+                alert("⚠️ املأ الفراغات واختر صورة");
             }
         };
 
-        // حذف منتج من فايربيس
         window.deleteProduct = function(id) {
             const item = products.find(p => p.id === id);
             if(item && item.firebaseKey) {
@@ -154,7 +158,6 @@
             }
         };
 
-        // عرض المنتجات للزبائن
         window.render = function() {
             document.getElementById('product-list').innerHTML = products.map(p => `
                 <div class="premium-glass rounded-[2rem] overflow-hidden group border border-white/5 transition-all">
@@ -170,7 +173,6 @@
             `).join('');
         };
 
-        // عرض المنتجات في لوحة الإدارة
         window.renderAdminList = function() {
             document.getElementById('admin-delete-list').innerHTML = products.map(p => `
                 <div class="flex justify-between items-center bg-white/5 p-2 rounded-xl border border-white/5">
@@ -181,7 +183,6 @@
             `).join('');
         };
 
-        // السلة والطلبات
         window.addToCart = function(id) { 
             const item = products.find(x => x.id === id);
             if(item) { cart.push(item); updateUI(); }
@@ -197,13 +198,11 @@
             }
         };
 
-        // وظائف الواجهة
         window.toggleCart = function() { document.getElementById('cart-sidebar').classList.toggle('hidden'); };
         window.showOrderForm = function() { document.getElementById('cart-sidebar').classList.add('hidden'); document.getElementById('order-modal').classList.remove('hidden'); };
         window.closeOrderForm = function() { document.getElementById('order-modal').classList.add('hidden'); };
         window.closeAdmin = function() { document.getElementById('admin-panel').classList.add('hidden'); };
 
-        // إرسال الطلب (تلغرام + سجل محلي)
         document.getElementById('purchase-form').onsubmit = async (e) => {
             e.preventDefault();
             const n = document.getElementById('cust-name').value;
@@ -228,7 +227,6 @@
             } catch (err) { alert("⚠️ فشل الإرسال."); }
         };
 
-        // الدخول للإدارة
         let pressTimer;
         document.getElementById('admin-trigger').onmousedown = () => pressTimer = setTimeout(() => {
             if (prompt("كلمة السر:") === "ademnawalformamatnhbek") {
@@ -252,11 +250,10 @@
 
         window.printOrder = function(id) {
             const o = orders.find(x => x.id === id);
-            const newName = prompt("تعديل الاسم للوصل:", o.name) || o.name;
             const pArea = document.getElementById('print-area');
-            pArea.innerHTML = `<div style="border:2px solid #000; padding:20px; direction:rtl; color: black; background: white;">
+            pArea.innerHTML = `<div style="border:2px solid #000; padding:20px; direction:rtl; color:black; background:white;">
                 <h2 style="text-align:center;">Luxury Store</h2><hr>
-                <p>الاسم: ${newName}</p><p>الهاتف: ${o.phone}</p><p>العنوان: ${o.state} - ${o.city}</p>
+                <p>الاسم: ${o.name}</p><p>الهاتف: ${o.phone}</p><p>العنوان: ${o.state} - ${o.city}</p>
                 <p>المنتجات: ${o.items}</p><hr><h3>الإجمالي: ${o.total}</h3>
             </div>`;
             window.print();
